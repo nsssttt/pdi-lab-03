@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Booking request saved{% endblock %}
+{% block content %}
+<main class="wrap receipt" id="main">
+  <section aria-labelledby="receipt-title">
+    <h1 id="receipt-title">Booking request saved</h1>
+    <p>Request number <strong>{{ code }}</strong>.</p>
+    <a class="primary" href="{{ url_for('booking_form') }}">Make another request</a>
+  </section>
+</main>
+{% endblock %}

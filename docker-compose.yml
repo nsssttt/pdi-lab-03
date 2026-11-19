@@ -1,0 +1,18 @@
+name: internet-programming-lab03
+services:
+  web:
+    build: .
+    ports:
+      - "${LAB03_PORT:-8003}:8000"
+    environment:
+      BOOKING_DB: /data/bookings.sqlite3
+    volumes:
+      - bookings:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=2).close()"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+volumes:
+  bookings:

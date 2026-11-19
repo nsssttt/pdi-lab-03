@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Hotel Booking{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='/booking.js') }}" defer></script>{% endblock %}
+{% macro error(name) -%}
+  <span class="error" id="{{ name }}-error"{% if not errors.get(name) %} hidden{% endif %}>{{ errors.get(name, '') }}</span>
+{%- endmacro %}
+{% macro state(name, hint="") -%}
+aria-describedby="{{ (hint ~ ' ') if hint }}{{ name }}-error"{% if errors.get(name) %} aria-invalid="true"{% endif %}
+{%- endmacro %}
+{% macro mark() %}<span aria-hidden="true">*</span>{% endmacro %}
+{% macro input_field(name, label, type="text", required=true, group="", show_mark=true) -%}
+<div class="field">
+  <label for="{{ name }}">{{ label }}{% if required and show_mark %} {{ mark() }}{% endif %}</label>
+  <input id="{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ values.get(name, '') }}"
+    {% if required %}required {% endif %}{{ state(group or name) }} {{ caller() }}>
+  {% if not group %}{{ error(name) }}{% endif %}
+</div>
+{%- endmacro %}
+{% block content %}
+<main class="wrap layout" id="main">
+  <div class="intro">
+    <h1>Hotel Booking</h1>
+  </div>
+
+  <form class="booking-form" action="{{ url_for('create_booking') }}" method="post" id="booking-form"
+    data-departure-min="{{ min_departure }}" data-departure-max="{{ max_departure }}">
+    <input type="hidden" name="form_id" value="{{ values.form_id }}">
+    <p class="hint">Fields marked with * are required.</p>
+    <p id="form-feedback" class="form-error" tabindex="-1" role="alert"{% if not errors %} hidden{% endif %}>
+      {{ errors.get('form', 'Check the highlighted fields.') }}
+    </p>
+
+    <fieldset>
+      <legend>Guest Details</legend>
+      <div class="grid">
+        {% call input_field("first_name", "First Name") %}autocomplete="given-name" maxlength="64"{% endcall %}
+        {% call input_field("last_name", "Last Name") %}autocomplete="family-name" maxlength="64"{% endcall %}
+        {% call input_field("email", "Email", "email") %}autocomplete="email" maxlength="254" placeholder="name@example.com"{% endcall %}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Room and Guests</legend>
+      <div class="grid">
+        <div class="field">
+          <label for="room_type">Room Type</label>
+          <select id="room_type" name="room_type" {{ state('room_type') }}>
+            <option value="">Select a room type</option>
+            {% for key, label in rooms.items() %}
+            <option value="{{ key }}"{% if values.get('room_type') == key %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {{ error('room_type') }}
+        </div>
+        <div class="field">
+          <label for="guests">Number of Guests {{ mark() }}</label>
+          <input id="guests" name="guests" type="number" min="1" max="10" step="1" inputmode="numeric"
+            {{ state('guests', 'guest-hint') }} value="{{ values.get('guests', '') }}" required>
+          <span class="hint" id="guest-hint">1 to 10 guests.</span>
+          {{ error('guests') }}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Arrival Date &amp; Time {{ mark() }}</legend>
+      <div class="grid">
+        {% call input_field("arrival", "Arrival Date", "date", show_mark=false) %}min="{{ min_arrival }}" max="{{ max_arrival }}"{% endcall %}
+        <div>
+          <div class="parts">
+            {% call input_field("arrival_hour", "Hour", "number", group="arrival_clock", show_mark=false) %}min="1" max="12" step="1" inputmode="numeric" placeholder="12"{% endcall %}
+            {% call input_field("arrival_minute", "Minute", "number", group="arrival_clock", show_mark=false) %}min="0" max="59" step="1" inputmode="numeric" placeholder="00"{% endcall %}
+            <div class="field">
+              <label for="arrival_period">AM or PM</label>
+              <select id="arrival_period" name="arrival_period" required {{ state('arrival_clock') }}>
+                <option value="">Select</option>
+                {% for period in ("AM", "PM") %}
+                <option value="{{ period }}"{% if values.get('arrival_period') == period %} selected{% endif %}>{{ period }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          {{ error('arrival_clock') }}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Departure Date {{ mark() }}</legend>
+      <div class="parts">
+        <div class="field">
+          <label for="departure_month">Month</label>
+          <select id="departure_month" name="departure_month" required {{ state('departure') }}>
+            <option value="">Select month</option>
+            {% for month in months %}
+            <option value="{{ loop.index }}"{% if values.get('departure_month') == loop.index | string %} selected{% endif %}>{{ month }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="departure_day">Day</label>
+          <select id="departure_day" name="departure_day" required {{ state('departure') }}>
+            <option value="">Select day</option>
+            {% for day in range(1, 32) %}
+            <option value="{{ day }}"{% if values.get('departure_day') == day | string %} selected{% endif %}>{{ day }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="departure_year">Year</label>
+          <select id="departure_year" name="departure_year" required {{ state('departure') }}>
+            <option value="">Select year</option>
+            {% for year in years %}
+            <option value="{{ year }}"{% if values.get('departure_year') == year | string %} selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      {{ error('departure') }}
+    </fieldset>
+
+    <fieldset>
+      <legend>Free Airport Pickup {{ mark() }}</legend>
+      <div class="options">
+        <label><input type="radio" name="pickup" value="yes" required aria-controls="flight-field" {{ state('pickup') }}{% if values.get('pickup') == 'yes' %} checked{% endif %}> Yes, please</label>
+        <label><input type="radio" name="pickup" value="no" required {{ state('pickup') }}{% if values.get('pickup') == 'no' %} checked{% endif %}> No, thanks</label>
+      </div>
+      {{ error('pickup') }}
+      <div id="flight-field" class="flight">
+        {% call input_field("flight", "Flight Number (optional)", required=false) %}maxlength="12" placeholder="PS 123" spellcheck="false"{% endcall %}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Meals {{ mark() }}</legend>
+      <p class="hint" id="meal-hint">Select at least one.</p>
+      <div class="options meals">
+        {% for key, label in meals.items() %}
+        <label>
+          <input type="checkbox" name="meals" value="{{ key }}" {{ state('meals', 'meal-hint') }}{% if key in values.get('meals', ()) %} checked{% endif %}>
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+      {{ error('meals') }}
+    </fieldset>
+
+    <div class="field">
+      <label for="requests">Special Requests</label>
+      <textarea id="requests" name="requests" maxlength="500" rows="3" {{ state('requests', 'requests-hint') }}>{{ values.get('requests', '') }}</textarea>
+      <span class="hint" id="requests-hint">Up to 500 characters.</span>
+      {{ error('requests') }}
+    </div>
+    <div class="actions">
+      <button class="primary" type="submit">Submit Booking Request</button>
+      <a href="{{ url_for('booking_form') }}">Clear form</a>
+    </div>
+  </form>
+
+  <aside class="hotel" aria-labelledby="hotel-title">
+    <img src="{{ url_for('static', path='/lodge.webp') }}" alt="" width="640" height="540">
+    <div class="hotel-details">
+      <h2 id="hotel-title">Stay Information</h2>
+      <dl>
+        <div><dt>Check-in</dt><dd>from 2:00 PM</dd></div>
+        <div><dt>Check-out</dt><dd>by 11:00 AM</dd></div>
+      </dl>
+    </div>
+  </aside>
+</main>
+{% endblock %}
